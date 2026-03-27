@@ -1,7 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   SafeAreaView,
   View,
@@ -13,56 +10,58 @@ import {
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
-
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
 import AntDesign from 'react-native-vector-icons/AntDesign';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+
+const FIREBASE_BASE =
+  'https://international-public-sch-db945-default-rtdb.firebaseio.com';
 
 const StudentProfileScreen = ({ navigation }) => {
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchStudent();
-  }, []);
-
-  const fetchStudent = async () => {
+  const fetchStudent = useCallback(async () => {
     try {
       setLoading(true);
 
-      // 1️⃣ Get userData from AsyncStorage
-      const storedUser = await AsyncStorage.getItem("userData");
-
+      const storedUser = await AsyncStorage.getItem('userData');
       if (!storedUser) {
-        console.log("No user data found");
-        setLoading(false);
+        console.log('No user data found');
+        setStudent(null);
         return;
       }
 
       const parsedUser = JSON.parse(storedUser);
       const email = parsedUser.email;
 
-      // 2️⃣ Firebase doesn't allow '.' in keys → convert email
-      const studentKey = email.replace(/\./g, "_");
+      // Firebase key sanitize: replace invalid chars.
+      const studentKey = email.replace(/[.#$[\]]/g, '_');
 
-      // 3️⃣ Fetch student data from Firebase
       const res = await axios.get(
-        `https://international-public-sch-db945-default-rtdb.firebaseio.com/students/${studentKey}.json`
+        `${FIREBASE_BASE}/students/${studentKey}.json`,
       );
 
-      setStudent(res.data);
+      setStudent(res.data || null);
     } catch (error) {
-      console.log("API Error:", error);
+      console.log('API Error:', error);
+      setStudent(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchStudent();
+  }, [fetchStudent]);
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <View style={styles.centerWrap}>
         <ActivityIndicator size="large" color="#0b5f95" />
       </View>
     );
@@ -70,21 +69,60 @@ const StudentProfileScreen = ({ navigation }) => {
 
   if (!student) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text style={{ color: "red", fontSize: 18 }}>
-          Unable to load profile!
-        </Text>
+      <View style={styles.centerWrap}>
+        <Text style={styles.errorText}>Unable to load profile!</Text>
       </View>
     );
   }
+
+  const infoItems = [
+    {
+      icon: <Feather name="file-text" size={20} color="#0f6aa5" />,
+      label: 'Admission No',
+      value: student.admissionNumber,
+    },
+    {
+      icon: <Feather name="user" size={20} color="#0f6aa5" />,
+      label: 'Full Name',
+      value: student.name,
+    },
+    {
+      icon: (
+        <MaterialCommunityIcons
+          name="account-tie"
+          size={22}
+          color="#0f6aa5"
+        />
+      ),
+      label: 'Father Name',
+      value: student.fatherName,
+    },
+    {
+      icon: <AntDesign name="calendar" size={20} color="#0f6aa5" />,
+      label: 'Date of Birth',
+      value: student.dob,
+    },
+
+    {
+      icon: <Feather name="phone" size={20} color="#0f6aa5" />,
+      label: 'Contact Number',
+      value: student.contact,
+    },
+
+    {
+      icon: <Feather name="map-pin" size={20} color="#0f6aa5" />,
+      label: 'Address',
+      value: student.address,
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0b5f95" />
 
       {/* HEADER */}
-      <LinearGradient colors={["#0f6aa5", "#0b5f95"]} style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+      <LinearGradient colors={['#0f6aa5', '#0b5f95']} style={styles.header}>
+        <TouchableOpacity onPress={navigation.goBack} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={26} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Profile</Text>
@@ -94,88 +132,32 @@ const StudentProfileScreen = ({ navigation }) => {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* PROFILE SECTION */}
         <View style={styles.profileSection}>
-          {student?.profileImg ? (
-            <Image source={{ uri: student.profileImg }} style={styles.profileImage} />
+          {student.profileImg ? (
+            <Image
+              source={{ uri: student.profileImg }}
+              style={styles.profileImage}
+            />
           ) : (
-            <MaterialCommunityIcons name="account-circle" size={150} color="#888" />
+            <MaterialCommunityIcons
+              name="account-circle"
+              size={150}
+              color="#888"
+            />
           )}
 
           <Text style={styles.name}>{student.name}</Text>
         </View>
 
         {/* INFO CARDS */}
-        <View style={styles.card}>
-          <Feather name="file-text" size={20} color="#0f6aa5" />
-          <View style={styles.cardText}>
-            <Text style={styles.label}>Admission No</Text>
-            <Text style={styles.value}>{student.admissionNumber}</Text>
+        {infoItems.map(item => (
+          <View key={item.label} style={styles.card}>
+            {item.icon}
+            <View style={styles.cardText}>
+              <Text style={styles.label}>{item.label}</Text>
+              <Text style={styles.value}>{item.value || '-'}</Text>
+            </View>
           </View>
-        </View>
-
-        <View style={styles.card}>
-          <Feather name="user" size={20} color="#0f6aa5" />
-          <View style={styles.cardText}>
-            <Text style={styles.label}>Full Name</Text>
-            <Text style={styles.value}>{student.name}</Text>
-          </View>
-        </View>
-        <View style={styles.card}>
-          <MaterialCommunityIcons
-            name="account-tie"
-            size={22}
-            color="#0f6aa5"
-          />
-          <View style={styles.cardText}>
-            <Text style={styles.label}>Father Name</Text>
-            <Text style={styles.value}>{student.fatherName}</Text>
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <AntDesign name="calendar" size={20} color="#0f6aa5" />
-          <View style={styles.cardText}>
-            <Text style={styles.label}>Date of Birth</Text>
-            <Text style={styles.value}>{student.dob}</Text>
-          </View>
-        </View>
-        <View style={styles.card}>
-          <MaterialCommunityIcons name="gender-male-female" size={20} color="#0f6aa5" />
-          <View style={styles.cardText}>
-            <Text style={styles.label}>Gender</Text>
-            <Text style={styles.value}>{student.gender}</Text>
-          </View>
-        </View>
-        <View style={styles.card}>
-          <Feather name="phone" size={20} color="#0f6aa5" />
-          <View style={styles.cardText}>
-            <Text style={styles.label}>Contact Number</Text>
-            <Text style={styles.value}>{student.contact}</Text>
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <AntDesign name="mail" size={20} color="#0f6aa5" />
-          <View style={styles.cardText}>
-            <Text style={styles.label}>Email Address</Text>
-            <Text style={styles.value}>{student.email}</Text>
-          </View>
-        </View>
-
-
-
-
-        <View style={styles.card}>
-          <Feather name="map-pin" size={20} color="#0f6aa5" />
-          <View style={styles.cardText}>
-            <Text style={styles.label}>Address</Text>
-            <Text style={styles.value}>{student.address}</Text>
-          </View>
-        </View>
-
-
-
-
-
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
@@ -183,14 +165,19 @@ const StudentProfileScreen = ({ navigation }) => {
 
 export default StudentProfileScreen;
 
-
-
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f7faff',
-
+  },
+  centerWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 18,
   },
   header: {
     height: 120,
@@ -209,18 +196,9 @@ const styles = StyleSheet.create({
   backBtn: {
     padding: 6,
   },
-
   profileSection: {
     alignItems: 'center',
     marginTop: 30,
-  },
-  imageWrapper: {
-    height: 150,
-    width: 150,
-    borderRadius: 75,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
   },
   profileImage: {
     width: 130,
@@ -234,44 +212,6 @@ const styles = StyleSheet.create({
     color: '#0b5f95',
     marginTop: 15,
   },
-  role: {
-    fontSize: 16,
-    color: '#666',
-  },
-  bio: {
-    fontSize: 14,
-    color: '#555',
-    marginTop: 8,
-    marginHorizontal: 40,
-    textAlign: 'center',
-  },
-
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 25,
-    marginHorizontal: 10,
-  },
-  statCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 25,
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-  },
-  statNumber: {
-    fontSize: 20,
-    color: '#0f6aa5',
-    fontWeight: '700',
-  },
-  statLabel: {
-    fontSize: 13,
-    color: '#777',
-    marginTop: 4,
-  },
-
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -296,32 +236,5 @@ const styles = StyleSheet.create({
     color: '#222',
     fontWeight: '500',
     marginTop: 4,
-  },
-
-  socialRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 30,
-    gap: 20,
-  },
-
-  btnWrapper: {
-    marginTop: 40,
-    marginBottom: 60,
-    marginHorizontal: 20,
-  },
-  btnGradient: {
-    borderRadius: 12,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-  },
-  btnText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
-    marginLeft: 8,
   },
 });

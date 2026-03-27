@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,30 +11,27 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Dimensions,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const { width } = Dimensions.get('window');
-const FIREBASE_URL = 'https://international-public-sch-db945-default-rtdb.firebaseio.com/';
+const FIREBASE_URL =
+  'https://international-public-sch-db945-default-rtdb.firebaseio.com/';
 
 const LoginScreen = ({ navigation }) => {
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [errorText, setErrorText] = useState('');
 
-  // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const logoScale = useRef(new Animated.Value(0.8)).current;
 
   useEffect(() => {
-    // Entrance animations
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -55,146 +52,165 @@ const LoginScreen = ({ navigation }) => {
     ]).start();
   }, []);
 
-  const createFirebaseKey = (id) => {
+  const createFirebaseKey = useCallback(id => {
     return id.replace(/[.#$[\]]/g, '_');
-  };
+  }, []);
 
-  const handleSignIn = async () => {
+  const handleSignIn = useCallback(async () => {
+    setErrorText('');
 
     if (!email || !password) {
-      alert('Please fill all fields');
+      setErrorText('Please enter email and password');
       return;
     }
+
     setIsLoading(true);
-    const userId = createFirebaseKey(email);
+    const userId = createFirebaseKey(email.trim().toLowerCase());
 
     try {
-      const response = await axios.get(`${FIREBASE_URL}students/${userId}.json`);
+      const response = await axios.get(
+        `${FIREBASE_URL}students/${userId}.json`,
+      );
 
-      if (!response.data || Object.keys(response.data).length === 0) {
-        alert('User not found. Please signup first!');
+      if (!response.data) {
+        setErrorText('Student not found.');
         setIsLoading(false);
         return;
       }
 
-      if (response.data.password === password) {
+      if (response.data.password !== password) {
+        setErrorText('Incorrect password.');
         setIsLoading(false);
-
-        await AsyncStorage.setItem('userData', JSON.stringify({
-          email: email,
-          password: password,
-        }));
-
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "Home" }],
-        });
-
-        Toast.show({
-          type: 'success',
-          text1: 'Login Successful',
-          position: 'bottom',
-        });
-      } else {
-        setIsLoading(false);
-        alert('Incorrect password. Try again!');
+        return;
       }
-    } catch (error) {
-      console.log('Login error:', error);
+
+      await AsyncStorage.setItem(
+        'userData',
+        JSON.stringify({ email }),
+      );
+
       setIsLoading(false);
-      alert('Login failed. Try again!');
+
+      Toast.show({
+        type: 'success',
+        text1: 'Login Successful',
+        position: 'bottom',
+      });
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
+    } catch (error) {
+      console.log(error);
+      setIsLoading(false);
+      setErrorText('Something went wrong.');
     }
-  };
+  }, [email, password]);
 
   return (
     <View style={styles.container}>
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
 
         <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+
           <Animated.View
             style={[
               styles.content,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
-              },
-            ]}
-          >
-            {/* Header Section */}
-            <Animated.View style={[styles.headerSection, { transform: [{ scale: logoScale }] }]}>
-              <View style={styles.logoContainer}>
-                <View style={styles.logoWrapper}>
-                  <Image source={require('../Img/IPS.png')} style={styles.logo} resizeMode="contain" />
-                </View>
-                <Text style={styles.appName}>IPS</Text>
-              </View>
+              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+            ]}>
+
+            {/* 🔥 HEADER */}
+            <Animated.View
+              style={[styles.headerSection, { transform: [{ scale: logoScale }] }]}>
+
+              <Image
+                source={require('../Img/logo.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+
+              <Text style={styles.appName}>
+                Saint Monica International School
+              </Text>
             </Animated.View>
 
-            {/* Login Card */}
+            {/* 🔥 LOGIN CARD */}
             <View style={styles.loginCard}>
               <Text style={styles.welcomeText}>Welcome Back!</Text>
-              <Text style={styles.subtitleText}>Sign in to your account</Text>
+              <Text style={styles.subtitleText}>
+                Sign in to your account
+              </Text>
 
-              {/* Input Fields */}
-              <View style={styles.inputSection}>
-                {/* Email/Phone */}
-                <View style={styles.commonInputWrapper}>
-                  <TextInput
-                    placeholder="Enter your email or phone"
-                    placeholderTextColor="#A0A0A0"
-                    style={styles.commonInput}
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                </View>
-
-                {/* Password */}
-                <View style={styles.commonInputWrapper}>
-                  <TextInput
-                    placeholder="Enter your password"
-                    placeholderTextColor="#A0A0A0"
-                    secureTextEntry={!showPassword}
-                    style={styles.commonInput}
-                    value={password}
-                    onChangeText={setPassword}
-                  />
-                  <TouchableOpacity
-                    style={styles.eyeButton}
-                    onPress={() => setShowPassword(!showPassword)}
-                  >
-                    <Text style={styles.eyeIcon}>
-                      {showPassword ? '👁️' : '👁️‍🗨️'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+              {/* EMAIL */}
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  placeholder="Enter your email"
+                  style={styles.input}
+                  value={email}
+                  onChangeText={text => {
+                    setEmail(text);
+                    setErrorText('');
+                  }}
+                  autoCapitalize="none"
+                />
               </View>
 
-              {/* Sign In Button */}
+              {/* PASSWORD */}
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  placeholder="Enter your password"
+                  secureTextEntry={!showPassword}
+                  style={styles.input}
+                  value={password}
+                  onChangeText={text => {
+                    setPassword(text);
+                    setErrorText('');
+                  }}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <Text style={styles.eye}>
+                    {showPassword ? '👁️' : '🙈'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* ERROR */}
+              {errorText ? (
+                <Text style={styles.errorText}>{errorText}</Text>
+              ) : null}
+
+              {/* LOGIN BTN */}
               <TouchableOpacity
-                style={styles.signInButton}
+                style={styles.button}
                 onPress={handleSignIn}
-              >
+                disabled={isLoading}>
+
                 <LinearGradient
                   colors={['#667eea', '#764ba2']}
-                  style={styles.gradientButton}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.signInText}>
+                  style={styles.gradientBtn}>
+
+                  <Text style={styles.btnText}>
                     {isLoading ? 'Signing In...' : 'Sign In'}
                   </Text>
+
                 </LinearGradient>
               </TouchableOpacity>
 
-              {/* Forgot Password */}
-              <TouchableOpacity style={styles.forgotPasswordContainer}>
-                <Text style={styles.forgotPassword}>Forgot Password?</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('ForgotPassword')}>
+                <Text style={styles.forgot}>Forgot Password?</Text>
               </TouchableOpacity>
+
             </View>
+
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -209,152 +225,111 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
   },
+
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 20,
     paddingVertical: 40,
   },
+
   content: {
     alignItems: 'center',
   },
+
+  // 🔥 HEADER FIXED
   headerSection: {
     alignItems: 'center',
-    marginBottom: 30,
-  },
-  logoContainer: {
-    alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ffffff',
+    marginBottom: 25,
   },
-  logoWrapper: {
-    marginTop: 25,
-    position: 'relative',
-    marginBottom: 20,
-    backgroundColor: '#ffffff',
-  },
+
   logo: {
-    width: 130,
-    height: 130,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    marginTop:100,
   },
 
   appName: {
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '900',
     color: '#800000',
-    letterSpacing: 2,
-    marginBottom: 5,
-    position: 'absolute',
-    top: 135,
-  },
-  appSubtitle: {
-    fontSize: 14,
-    color: '#718096',
-    fontWeight: '400',
     textAlign: 'center',
+    marginTop: 12,
+    paddingHorizontal: 10,
   },
+
+  // CARD
   loginCard: {
     backgroundColor: '#fcf5f5ee',
-    marginTop: 10,
     borderRadius: 20,
-    padding: 30,
+    padding: 25,
     width: '100%',
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 10,
+    elevation: 8,
     borderWidth: 1,
-    borderColor: '#b3b9bcff',
+    borderColor: '#ddd',
   },
+
   welcomeText: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#2D3748',
     textAlign: 'center',
-    marginBottom: 8,
   },
+
   subtitleText: {
-    fontSize: 16,
-    color: '#718096',
+    fontSize: 14,
+    color: '#666',
     textAlign: 'center',
-    marginBottom: 30,
-    fontWeight: '400',
+    marginBottom: 20,
   },
-  inputSection: {
-    marginBottom: 25,
-  },
-  commonInputWrapper: {
+
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F7FAFC',
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderColor: '#ddd',
+    paddingHorizontal: 12,
+    marginBottom: 12,
   },
-  commonInput: {
+
+  input: {
     flex: 1,
-    paddingVertical: 16,
-    fontSize: 16,
-    color: '#2D3748',
+    paddingVertical: 14,
+    fontSize: 15,
   },
-  eyeButton: {
-    paddingLeft: 10,
-  },
-  eyeIcon: {
+
+  eye: {
     fontSize: 18,
-    color: '#718096',
   },
-  signInButton: {
-    borderRadius: 12,
-    marginBottom: 20,
-    shadowColor: '#667eea',
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+
+  button: {
+    marginTop: 10,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
-  gradientButton: {
-    paddingVertical: 16,
-    borderRadius: 12,
+
+  gradientBtn: {
+    paddingVertical: 14,
     alignItems: 'center',
   },
-  signInText: {
-    color: '#ffffff',
-    fontSize: 18,
+
+  btnText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '700',
-    letterSpacing: 0.5,
   },
-  forgotPasswordContainer: {
-    alignItems: 'center',
-    marginBottom: 25,
-  },
-  forgotPassword: {
+
+  forgot: {
+    textAlign: 'center',
+    marginTop: 15,
     color: '#667eea',
-    fontSize: 16,
     fontWeight: '600',
   },
-  signupRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  signupText: {
-    color: '#718096',
-    fontSize: 16,
-  },
-  signupLink: {
-    color: '#667eea',
-    fontWeight: '700',
-    fontSize: 16,
+
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginBottom: 10,
   },
 });

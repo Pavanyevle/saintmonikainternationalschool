@@ -5,19 +5,17 @@ import axios from 'axios';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Logo from './src/Screens/Logo';
-import Welcome from './src/Screens/Welcome';
+import Achievement from './src/Screens/Achievement';
+import Gallery from './src/Screens/Gallery';
 import ClassRoutine from './src/Screens/ClassRoutine';
 import Attendance from './src/Screens/Attendance';
-import StudentInfoModal from './src/Screens/StudentInfoModal';
 import AboutUs from './src/Screens/AboutUs';
-import TeacherInfo from './src/Screens/TeacherInfo';
 import SubjectList from './src/Screens/SubjectList';
 import HelpAndSupport from './src/Screens/HelpAndSupport';
 import Devloper from './src/Screens/Devloper';
 import Syllabus from './src/Screens/Syllabus';
 import Account from './src/Screens/Account';
 import Login from './src/Screens/Login';
-import SignUp from './src/Screens/SignUp';
 import BottomTab from './src/Screens/BottomTab';
 import MyProfile from './src/Screens/MyProfile';
 import Home from './src/Screens/Home';
@@ -83,14 +81,13 @@ const App = () => {
           screenOptions={{ headerShown: false }}
         >
           <Stack.Screen name="Logo" component={Logo} />
-          <Stack.Screen name="Welcome" component={Welcome} />
+          <Stack.Screen name="Gallery" component={Gallery} />
+          <Stack.Screen name="Achievement" component={Achievement} />
           <Stack.Screen name="Login" component={Login} />
           <Stack.Screen name="Home" component={Home} />
-          <Stack.Screen name="TeacherInfo" component={TeacherInfo} />
           <Stack.Screen name="HomeWork" component={HomeWork} />
           <Stack.Screen name="About Us" component={AboutUs} />
           <Stack.Screen name="Notice" component={Notice} />
-          <Stack.Screen name="SignUp" component={SignUp} />
           <Stack.Screen name="Developer" component={Devloper} />
           <Stack.Screen name="My Profile" component={MyProfile} />
           <Stack.Screen name="BottomTab" component={BottomTab} />
@@ -100,7 +97,6 @@ const App = () => {
           <Stack.Screen name="SubjectList" component={SubjectList} />
           <Stack.Screen name="Syllabus" component={Syllabus} />
           <Stack.Screen name="HelpAndSupport" component={HelpAndSupport} />
-          <Stack.Screen name="StudentInfoModal" component={StudentInfoModal} />
           <Stack.Screen name="Events" component={Events} />
           <Stack.Screen name="StudyMaterial" component={StudyMaterial} />
           <Stack.Screen name="LessonPlan" component={LessonPlan} />

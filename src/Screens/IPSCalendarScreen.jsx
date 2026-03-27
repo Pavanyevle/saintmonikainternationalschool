@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -23,11 +23,7 @@ const IPSCalendarScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
 
-  useEffect(() => {
-    fetchCalendar();
-  }, []);
-
-  const fetchCalendar = async () => {
+  const fetchCalendar = useCallback(async () => {
     try {
       setLoading(true);
       const res = await axios.get(
@@ -39,15 +35,19 @@ const IPSCalendarScreen = ({ navigation }) => {
       } else {
         setCalendarImg(null);
       }
-
-      setLoading(false);
     } catch (error) {
       console.log("Calendar fetch error:", error);
+      Alert.alert("Error", "Failed to load calendar");
+    } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const requestPermission = async () => {
+  useEffect(() => {
+    fetchCalendar();
+  }, [fetchCalendar]);
+
+  const requestPermission = useCallback(async () => {
     if (Platform.OS === "android") {
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE
@@ -55,9 +55,9 @@ const IPSCalendarScreen = ({ navigation }) => {
       return granted === PermissionsAndroid.RESULTS.GRANTED;
     }
     return true;
-  };
+  }, []);
 
-  const downloadImage = async () => {
+  const downloadImage = useCallback(async () => {
     if (!calendarImg) return;
 
     const permissionGranted = await requestPermission();
@@ -76,35 +76,33 @@ const IPSCalendarScreen = ({ navigation }) => {
         toFile: path,
       }).promise;
 
-      setDownloading(false);
       Alert.alert("Success 🎉", "Calendar downloaded successfully!");
     } catch (error) {
       console.log("Download error:", error);
-      setDownloading(false);
       Alert.alert("Error", "Failed to download calendar");
+    } finally {
+      setDownloading(false);
     }
-  };
+  }, [calendarImg, requestPermission]);
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#083f66" />
 
-    <LinearGradient colors={["#083f66", "#083f66"]} style={styles.header}>
-  <View style={styles.headerRow}>
-    <TouchableOpacity
-      onPress={() => navigation.goBack()}
-      style={styles.backBtn}
-      activeOpacity={0.7}
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-    >
-      <Ionicons name="arrow-back" size={26} color="#fff" />
-    </TouchableOpacity>
+      <LinearGradient colors={["#083f66", "#083f66"]} style={styles.header}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            onPress={navigation.goBack}
+            style={styles.backBtn}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="arrow-back" size={26} color="#fff" />
+          </TouchableOpacity>
 
-    <Text style={styles.headerTitle}>📅 IPS Calendar</Text>
-  </View>
-</LinearGradient>
-
-
+          <Text style={styles.headerTitle}>📅 IPS Calendar</Text>
+        </View>
+      </LinearGradient>
 
       {/* Body */}
       <View style={styles.body}>
@@ -118,7 +116,11 @@ const IPSCalendarScreen = ({ navigation }) => {
               resizeMode="contain"
             />
 
-            <TouchableOpacity style={styles.downloadBtn} onPress={downloadImage}>
+            <TouchableOpacity
+              style={styles.downloadBtn}
+              onPress={downloadImage}
+              disabled={downloading}
+            >
               <MaterialCommunityIcons
                 name="download"
                 size={20}
@@ -145,43 +147,37 @@ const IPSCalendarScreen = ({ navigation }) => {
 };
 
 export default IPSCalendarScreen;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f1f5f8",
   },
-
   header: {
-  paddingTop: Platform.OS === "android" ? 45 : 20,
-  paddingBottom: 22,
-  paddingHorizontal: 16,
-  height:120,
-  paddingTop:50,
-},
-
-headerRow: {
-  flexDirection: "row",
-  alignItems: "center",
-},
-
-backBtn: {
-  padding: 6,
-  marginRight: 12,
-},
-
-headerTitle: {
-  color: "#fff",
-  fontSize: 25,
-  fontWeight: "800",
-},
-
+    paddingBottom: 22,
+    paddingHorizontal: 16,
+    height: 120,
+    paddingTop: Platform.OS === "android" ? 50 : 20,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  backBtn: {
+    padding: 6,
+    marginRight: 12,
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: 25,
+    fontWeight: "800",
+  },
   body: {
     flex: 1,
     padding: 16,
     justifyContent: "center",
     alignItems: "center",
   },
-
   calendarImg: {
     width: "100%",
     height: 380,
@@ -189,7 +185,6 @@ headerTitle: {
     backgroundColor: "#fff",
     elevation: 4,
   },
-
   downloadBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -200,18 +195,15 @@ headerTitle: {
     borderRadius: 30,
     elevation: 4,
   },
-
   downloadText: {
     color: "#fff",
     fontSize: 14,
     fontWeight: "700",
     marginLeft: 8,
   },
-
   noDataBox: {
     alignItems: "center",
   },
-
   noDataText: {
     marginTop: 10,
     fontSize: 16,

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,6 @@ import LinearGradient from 'react-native-linear-gradient';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-
-const AVATAR_URI = 'https://avatars.githubusercontent.com/u/9919?s=200&v=4'; // Replace with your photo URL
 
 const skills = [
   { key: 'react', label: 'React Native' },
@@ -39,38 +37,59 @@ const DeveloperProfileScreen = () => {
   const [pressedSkill, setPressedSkill] = useState(null);
 
   useEffect(() => {
-    Animated.stagger(150, [
+    const sequence = Animated.stagger(150, [
       Animated.timing(headerAnim, {
         toValue: 1,
         duration: 600,
         useNativeDriver: true,
       }),
-      Animated.spring(avatarScale, { toValue: 1, friction: 6, useNativeDriver: true }),
-      Animated.timing(cardFade, { toValue: 1, duration: 600, useNativeDriver: true }),
-    ]).start();
-  }, []);
+      Animated.spring(avatarScale, {
+        toValue: 1,
+        friction: 6,
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardFade, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]);
 
-  const openLink = async (url) => {
+    sequence.start();
+
+    return () => {
+      sequence.stop();
+    };
+  }, [headerAnim, avatarScale, cardFade]);
+
+  const openLink = useCallback(async url => {
     try {
       const supported = await Linking.canOpenURL(url);
-      if (supported) await Linking.openURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      }
     } catch (err) {
-      console.warn(err);
+      console.warn('Open link error:', err);
     }
-  };
+  }, []);
 
-  const handleContact = () => {
+  const handleContact = useCallback(() => {
     const email = 'pavan.yevle@example.com';
     const subject = encodeURIComponent('Hello from your App');
     const body = encodeURIComponent('Hi Pavan,\n\nI would like to connect regarding...');
     const mailto = `mailto:${email}?subject=${subject}&body=${body}`;
     openLink(mailto);
-  };
+  }, [openLink]);
+
+  const year = useMemo(() => new Date().getFullYear(), []);
 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor="#0078d7" />
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <Animated.View
           style={[
@@ -97,7 +116,6 @@ const DeveloperProfileScreen = () => {
         <Animated.View style={[styles.avatarWrap, { transform: [{ scale: avatarScale }] }]}>
           <View style={styles.avatarShadow}>
             <Image source={require('../Img/pavan.jpeg')} style={styles.avatar} />
-           
           </View>
         </Animated.View>
 
@@ -106,9 +124,8 @@ const DeveloperProfileScreen = () => {
           <View style={styles.rowBetween}>
             <View>
               <Text style={styles.name}>Pavan Yevle</Text>
-              <Text style={styles.role}>React Native Developer </Text>
+              <Text style={styles.role}>React Native Developer</Text>
             </View>
-          
           </View>
 
           <View style={styles.infoRow}>
@@ -118,7 +135,7 @@ const DeveloperProfileScreen = () => {
 
           <View style={styles.infoRow}>
             <MaterialIcons name="phone" size={18} color="#0078d7" />
-            <Text style={styles.infoText}> +91 9144612496 </Text>
+            <Text style={styles.infoText}> +91 9144612496</Text>
           </View>
         </Animated.View>
 
@@ -126,7 +143,7 @@ const DeveloperProfileScreen = () => {
         <Animated.View style={[styles.card, { opacity: cardFade }]}>
           <Text style={styles.sectionTitle}>Skills</Text>
           <View style={styles.skillsWrap}>
-            {skills.map((s) => {
+            {skills.map(s => {
               const pressed = pressedSkill === s.key;
               return (
                 <TouchableOpacity
@@ -162,7 +179,7 @@ const DeveloperProfileScreen = () => {
         <Animated.View style={[styles.card, { opacity: cardFade }]}>
           <Text style={styles.sectionTitle}>Connect</Text>
           <View style={styles.socialRow}>
-            {socialLinks.map((s) => (
+            {socialLinks.map(s => (
               <TouchableOpacity
                 key={s.key}
                 activeOpacity={0.85}
@@ -174,10 +191,20 @@ const DeveloperProfileScreen = () => {
             ))}
           </View>
 
-         
+          <View style={styles.contactBtnWrap}>
+            <TouchableOpacity activeOpacity={0.9} onPress={handleContact}>
+              <LinearGradient
+                colors={['#0078d7', '#0053a6']}
+                style={styles.contactBtn}
+              >
+                <MaterialIcons name="mail-outline" size={20} color="#fff" />
+                <Text style={styles.contactText}>Contact Me</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
 
-        <Text style={styles.footerNote}>© {new Date().getFullYear()} Pavan Yevle </Text>
+        <Text style={styles.footerNote}>© {year} Pavan Yevle</Text>
         <View style={{ height: 60 }} />
       </ScrollView>
     </SafeAreaView>
@@ -186,12 +213,17 @@ const DeveloperProfileScreen = () => {
 
 export default DeveloperProfileScreen;
 
-/* ---------------- Styles ---------------- */
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#f7fbff' },
   container: { paddingVertical: 10, paddingHorizontal: 18, alignItems: 'center' },
 
-  headerWrap: { width: '100%', borderRadius: 14, overflow: 'hidden', marginBottom: 18,marginTop:50, },
+  headerWrap: {
+    width: '100%',
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 18,
+    marginTop: 50,
+  },
   header: { paddingVertical: 16, paddingHorizontal: 18, borderRadius: 14 },
   headerTitle: { color: '#fff', fontSize: 20, fontWeight: '800', textAlign: 'center' },
 
@@ -209,19 +241,6 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   avatar: { width: 130, height: 130, borderRadius: 65, borderWidth: 3, borderColor: '#fff' },
-
-  editBadge: {
-    position: 'absolute',
-    bottom: 10,
-    right: 14,
-    width: 34,
-    height: 34,
-    borderRadius: 18,
-    backgroundColor: '#0078d7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 6,
-  },
 
   card: {
     width: '100%',
@@ -241,15 +260,6 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   name: { fontSize: 20, fontWeight: '800', color: '#0b5f95' },
   role: { fontSize: 13, marginTop: 4, color: '#4b5563' },
-
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    backgroundColor: '#e8f4ff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 
   infoRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
   infoText: { fontSize: 14, marginLeft: 8, color: '#4b5563' },

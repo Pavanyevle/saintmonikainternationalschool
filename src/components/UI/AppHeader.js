@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginTop:30,
-    fontSize:25,
+    fontSize:21,
     alihnSelf:'center',
   },
   menuButton: {

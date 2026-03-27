@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,93 +7,91 @@ import {
   TouchableOpacity,
   Modal,
   Image,
-  Alert ,
-  ActivityIndicator
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import AppHeader from '../components/UI/AppHeader';
 import BottomTab from './BottomTab';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const NoticeScreen = ({ navigation,route }) => {
+const API_URL =
+  'https://international-public-sch-db945-default-rtdb.firebaseio.com/class/10/notice.json';
+
+const NoticeScreen = ({ navigation, route }) => {
   const [menuVisible, setMenuVisible] = useState(false);
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
-    const student = route.params?.student;
 
+  const student = route.params?.student;
 
-  const API_URL = "https://international-public-sch-db945-default-rtdb.firebaseio.com/class/10/notice.json";
-
-  useEffect(() => {
-    fetchNotices();
-  }, []);
-
-  const fetchNotices = async () => {
+  const fetchNotices = useCallback(async () => {
     try {
       const res = await axios.get(API_URL);
 
       if (res.data) {
-        // Firebase object → array convert
         const formatted = Object.values(res.data);
         setNotices(formatted);
       } else {
         setNotices([]);
       }
-
     } catch (err) {
-      console.log("Error fetching notices:", err);
+      console.log('Error fetching notices:', err);
+      Alert.alert('Error', 'Failed to load notices');
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
-    setLoading(false);
-  };
-const confirmLogout = () => {
-  Alert.alert(
-    'Confirm Logout',
-    'Are you sure you want to logout?',
-    [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await AsyncStorage.clear();
-            setMenuVisible(false);
+  useEffect(() => {
+    fetchNotices();
+  }, [fetchNotices]);
 
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Login' }],
-            });
-          } catch (e) {
-            console.log('Logout Error:', e);
-          }
+  const confirmLogout = useCallback(() => {
+    Alert.alert(
+      'Confirm Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.clear();
+              setMenuVisible(false);
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
+            } catch (e) {
+              console.log('Logout Error:', e);
+            }
+          },
         },
-      },
-    ],
-    { cancelable: true }
-  );
-};
-
+      ],
+      { cancelable: true },
+    );
+  }, [navigation]);
 
   return (
     <View style={styles.container}>
       <AppHeader title="Notice" onMenuPress={() => setMenuVisible(true)} />
 
-      {/* Loading */}
       {loading ? (
-        <ActivityIndicator size="large" color="#F97316" style={{ alignItems: 'center', justifyContent: 'center', flex: 1, marginTop: 200 }} />
+        <View style={styles.loaderWrap}>
+          <ActivityIndicator size="large" color="#F97316" />
+        </View>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
           style={styles.scrollArea}
         >
           {notices.length === 0 ? (
-            <Text style={{ textAlign: 'center', marginTop: 30, color: '#6B7280' }}>
-              No notices available
-            </Text>
+            <Text style={styles.emptyText}>No notices available</Text>
           ) : (
             notices.map((item, index) => (
               <View key={index} style={styles.card}>
@@ -113,10 +111,14 @@ const confirmLogout = () => {
                   <TouchableOpacity
                     style={styles.downloadBtn}
                     onPress={() => {
-
+                      // TODO: implement file download / open
                     }}
                   >
-                    <MaterialCommunityIcons name="download-outline" size={18} color="#004D60" />
+                    <MaterialCommunityIcons
+                      name="download-outline"
+                      size={18}
+                      color="#004D60"
+                    />
                     <Text style={styles.downloadText}>Download</Text>
                   </TouchableOpacity>
                 )}
@@ -126,9 +128,11 @@ const confirmLogout = () => {
         </ScrollView>
       )}
 
-      {/* VIEW ALL */}
       <TouchableOpacity style={styles.viewAllBtn}>
-        <LinearGradient colors={['#F97316', '#FB923C']} style={styles.gradientBtn}>
+        <LinearGradient
+          colors={['#F97316', '#FB923C']}
+          style={styles.gradientBtn}
+        >
           <Text style={styles.viewAllText}>VIEW ALL</Text>
         </LinearGradient>
       </TouchableOpacity>
@@ -151,24 +155,35 @@ const confirmLogout = () => {
               colors={['#0f6aa5', '#2a99d8', '#6dd5fa']}
               style={styles.modalBox}
             >
-
               <View style={styles.logoWrap}>
                 <View style={styles.logoCircle}>
                   <Image
                     source={require('../Img/ips1.png')}
                     style={styles.modalLogo}
                     resizeMode="contain"
-                  />            </View>
+                  />
+                </View>
               </View>
 
               <Text style={styles.schoolName}>International Public School</Text>
               <View style={styles.separator} />
 
               {[
-                { label: 'My Profile', icon: 'account-circle-outline', screen: 'MyProfile' },
-                { label: 'About Us', icon: 'information-outline', screen: 'AboutUs' },
-                { label: 'Help & Support', icon: 'headset', screen: 'HelpAndSupport' },
-                // { label: 'Developed & Designed By', icon: 'code-tags', screen: 'Developer' },
+                {
+                  label: 'My Profile',
+                  icon: 'account-circle-outline',
+                  screen: 'My Profile',
+                },
+                {
+                  label: 'About Us',
+                  icon: 'information-outline',
+                  screen: 'About Us',
+                },
+                {
+                  label: 'Help & Support',
+                  icon: 'headset',
+                  screen: 'HelpAndSupport',
+                },
               ].map((item, index) => (
                 <TouchableOpacity
                   key={index}
@@ -179,19 +194,28 @@ const confirmLogout = () => {
                   }}
                 >
                   <Text style={styles.modalItemText}>{item.label}</Text>
-                  <MaterialCommunityIcons name={item.icon} size={22} color="#0f6aa5" />
+                  <MaterialCommunityIcons
+                    name={item.icon}
+                    size={22}
+                    color="#0f6aa5"
+                  />
                 </TouchableOpacity>
               ))}
 
               <View style={styles.separator} />
 
-
               <TouchableOpacity
                 style={[styles.modalItem, { justifyContent: 'space-between' }]}
                 onPress={confirmLogout}
               >
-                <Text style={[styles.modalItemText, { color: 'red' }]}>Logout</Text>
-                <MaterialCommunityIcons name="logout" size={22} color="red" />
+                <Text style={[styles.modalItemText, { color: 'red' }]}>
+                  Logout
+                </Text>
+                <MaterialCommunityIcons
+                  name="logout"
+                  size={22}
+                  color="red"
+                />
               </TouchableOpacity>
             </LinearGradient>
           </View>
@@ -208,27 +232,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
-  header: {
-    paddingVertical: 20,
-    paddingHorizontal: 15,
-
-    elevation: 6,
-    paddingTop: 50,
-  },
-  headerContent: {
-    flexDirection: 'row',
+  loaderWrap: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-  },
-  backButton: {
-    paddingRight: 10,
-  },
-  headerTitle: {
-    color: '#fff',
-    fontSize: 25,
-    fontWeight: 'bold',
   },
   scrollArea: {
     padding: 15,
+  },
+  scrollContent: {
+    paddingBottom: 100,
   },
   card: {
     backgroundColor: '#fff',
@@ -286,6 +299,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 5,
   },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 30,
+    color: '#6B7280',
+  },
   viewAllBtn: {
     position: 'absolute',
     bottom: 20,
@@ -304,15 +322,9 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    flexDirection: 'row',
-  },
-  modalOverlay: {
-    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
   },
-
   modalContainer: {
     width: '80%',
     height: '100%',
@@ -323,15 +335,12 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 10,
   },
-
   modalBox: {
     paddingVertical: 25,
     paddingHorizontal: 20,
     height: '100%',
-
     backgroundColor: 'rgba(255,255,255,0.9)',
   },
-
   logoWrap: {
     alignItems: 'center',
     marginBottom: 8,
@@ -340,7 +349,6 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
   },
-
   logoCircle: {
     width: 90,
     height: 90,
@@ -352,8 +360,6 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 5 },
   },
-
-
   schoolName: {
     fontSize: 18,
     fontWeight: '700',
@@ -361,13 +367,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 12,
   },
-
   separator: {
     height: 1,
     backgroundColor: 'rgba(255,255,255,0.4)',
     marginVertical: 8,
   },
-
   modalItem: {
     borderWidth: 0.5,
     flexDirection: 'row',
@@ -383,7 +387,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-
   modalItemText: {
     fontSize: 15,
     fontWeight: '600',

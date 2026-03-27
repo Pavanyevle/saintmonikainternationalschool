@@ -1,57 +1,74 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AttendanceScreen = ({ navigation }) => {
   const [student, setStudent] = useState(null);
   const [attendance, setAttendance] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const percentage = useMemo(() => {
+    if (!attendance?.totalWorkingDays) return null;
+    return (
+      (attendance.present / attendance.totalWorkingDays) * 100
+    ).toFixed(1);
+  }, [attendance]);
 
-
-    useEffect(() => {
-    fetchAllData();
-  }, []);
-
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async () => {
     try {
       setLoading(true);
 
-      const storedUser = await AsyncStorage.getItem("userData");
-      if (!storedUser) return;
+      const storedUser = await AsyncStorage.getItem('userData');
+      if (!storedUser) {
+        setStudent(null);
+        setAttendance(null);
+        return;
+      }
 
-      const parsedUser = JSON.parse(storedUser);
-      const email = parsedUser.email;
+      const { email } = JSON.parse(storedUser) || {};
+      if (!email) {
+        setStudent(null);
+        setAttendance(null);
+        return;
+      }
 
-      // Firebase key formatting
-      const studentKey = email.replace(/\./g, "_");
+      const studentKey = email.replace(/\./g, '_');
 
-      // 1️⃣ Fetch student info
-      const studentRes = await axios.get(
-        `https://international-public-sch-db945-default-rtdb.firebaseio.com/students/${studentKey}.json`
-      );
+      const [studentRes, attendanceRes] = await Promise.all([
+        axios.get(
+          `https://international-public-sch-db945-default-rtdb.firebaseio.com/students/${studentKey}.json`,
+        ),
+        axios.get(
+          `https://international-public-sch-db945-default-rtdb.firebaseio.com/students/${studentKey}/attendance.json`,
+        ),
+      ]);
 
-      // 2️⃣ Fetch attendance info
-      const attendanceRes = await axios.get(
-        `https://international-public-sch-db945-default-rtdb.firebaseio.com/students/${studentKey}/attendance.json`
-      );
-
-      setStudent(studentRes.data);
-      setAttendance(attendanceRes.data);
-
+      setStudent(studentRes.data || null);
+      setAttendance(attendanceRes.data || {});
     } catch (error) {
-      console.log("Fetch Error:", error);
+      console.log('Fetch Error:', error?.message || error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <View style={styles.center}>
         <ActivityIndicator size="large" color="#0b5f95" />
       </View>
     );
@@ -59,10 +76,8 @@ const AttendanceScreen = ({ navigation }) => {
 
   if (!student) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text style={{ color: "red", fontSize: 18 }}>
-          Unable to load profile!
-        </Text>
+      <View style={styles.center}>
+        <Text style={styles.errorText}>Unable to load profile!</Text>
       </View>
     );
   }
@@ -72,7 +87,11 @@ const AttendanceScreen = ({ navigation }) => {
       {/* HEADER */}
       <LinearGradient colors={['#083f66', '#083f66']} style={styles.header}>
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
@@ -82,12 +101,23 @@ const AttendanceScreen = ({ navigation }) => {
       </LinearGradient>
 
       {/* SCROLL CONTENT */}
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollArea}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={styles.scrollArea}
+        contentContainerStyle={{ paddingBottom: 24 }}
+      >
         {/* STUDENT INFO CARD */}
         <View style={styles.profileCard}>
-          <Text style={styles.name}>{student.name} ({student.class}th)</Text>
+          <Text style={styles.name}>
+            {student.name} ({student.class}th)
+          </Text>
           <Text style={styles.info}>Father: {student.fatherName}</Text>
           <Text style={styles.info}>Mother: {student.motherName}</Text>
+          {percentage && (
+            <Text style={styles.info}>
+              Overall Attendance: {percentage}%
+            </Text>
+          )}
         </View>
 
         {/* ATTENDANCE SUMMARY */}
@@ -98,7 +128,9 @@ const AttendanceScreen = ({ navigation }) => {
             <View style={styles.row}>
               <View style={[styles.dot, { backgroundColor: '#00796B' }]} />
               <Text style={styles.label}>Total Working Days</Text>
-              <Text style={styles.value}>{attendance?.totalWorkingDays}</Text>
+              <Text style={styles.value}>
+                {attendance?.totalWorkingDays ?? 0}
+              </Text>
             </View>
           </View>
 
@@ -106,7 +138,7 @@ const AttendanceScreen = ({ navigation }) => {
             <View style={styles.row}>
               <View style={[styles.dot, { backgroundColor: '#2E7D32' }]} />
               <Text style={styles.label}>Present</Text>
-              <Text style={styles.value}>{attendance?.present}</Text>
+              <Text style={styles.value}>{attendance?.present ?? 0}</Text>
             </View>
           </View>
 
@@ -114,7 +146,7 @@ const AttendanceScreen = ({ navigation }) => {
             <View style={styles.row}>
               <View style={[styles.dot, { backgroundColor: '#C62828' }]} />
               <Text style={styles.label}>Absent</Text>
-              <Text style={styles.value}>{attendance?.absent}</Text>
+              <Text style={styles.value}>{attendance?.absent ?? 0}</Text>
             </View>
           </View>
 
@@ -122,7 +154,7 @@ const AttendanceScreen = ({ navigation }) => {
             <View style={styles.row}>
               <View style={[styles.dot, { backgroundColor: '#757575' }]} />
               <Text style={styles.label}>Leave</Text>
-              <Text style={styles.value}>{attendance?.leave}</Text>
+              <Text style={styles.value}>{attendance?.leave ?? 0}</Text>
             </View>
           </View>
         </View>
@@ -138,13 +170,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F9FA',
   },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 18,
+    fontWeight: '600',
+  },
   header: {
-    backgroundColor:'#083f66',
+    backgroundColor: '#083f66',
     paddingVertical: 25,
     paddingHorizontal: 15,
-    paddingTop:50,
-       height:120,
-
+    paddingTop: 50,
+    height: 120,
     elevation: 10,
   },
   headerContent: {
@@ -160,13 +202,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: '#fff',
-    fontSize:25,
+    fontSize: 25,
     fontWeight: 'bold',
-  },
-  headerSubtitle: {
-    color: '#E0F7FA',
-    fontSize: 13,
-    marginTop: 2,
   },
   scrollArea: {
     padding: 15,

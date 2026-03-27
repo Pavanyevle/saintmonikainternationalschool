@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,11 +12,27 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
+const PHONE = '+917620010017';
+const EMAIL = 'principalipsnow@gmail.com';
+const WHATSAPP_URL = `https://wa.me/917620010017?text=${encodeURIComponent(
+  'Hello IPS Support',
+)}`;
+
 const HelpSupportScreen = ({ navigation }) => {
-  const handleCall = () => Linking.openURL('tel:+919144612496');
-  const handleEmail = () => Linking.openURL('mailto:pavanyevle6@gmail.com');
-  const handleWhatsApp = () =>
-    Linking.openURL('https://wa.me/919144612496?text=Hello%20IPS%20Support');
+  const openUrl = useCallback(async url => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      }
+    } catch (e) {
+      console.log('Open URL error:', e);
+    }
+  }, []);
+
+  const handleCall = () => openUrl(`tel:${PHONE}`);
+  const handleEmail = () => openUrl(`mailto:${EMAIL}`);
+  const handleWhatsApp = () => openUrl(WHATSAPP_URL);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -30,7 +46,7 @@ const HelpSupportScreen = ({ navigation }) => {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity onPress={navigation.goBack} activeOpacity={0.7}>
             <MaterialCommunityIcons name="arrow-left" size={30} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Help & Support</Text>
@@ -39,7 +55,7 @@ const HelpSupportScreen = ({ navigation }) => {
       </LinearGradient>
 
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.section}>
@@ -55,9 +71,9 @@ const HelpSupportScreen = ({ navigation }) => {
           <View style={[styles.iconWrap, { backgroundColor: '#4CAF50' }]}>
             <MaterialCommunityIcons name="phone" size={24} color="#fff" />
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={styles.cardTextWrap}>
             <Text style={styles.cardTitle}>Call Support</Text>
-            <Text style={styles.cardSubtitle}>+91 9144612496</Text>
+            <Text style={styles.cardSubtitle}>+91-7620010017</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={24} color="#777" />
         </TouchableOpacity>
@@ -67,9 +83,9 @@ const HelpSupportScreen = ({ navigation }) => {
           <View style={[styles.iconWrap, { backgroundColor: '#FF9800' }]}>
             <MaterialCommunityIcons name="email" size={24} color="#fff" />
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={styles.cardTextWrap}>
             <Text style={styles.cardTitle}>Email Us</Text>
-            <Text style={styles.cardSubtitle}>pavanyevle6@gmail.com</Text>
+            <Text style={styles.cardSubtitle}>{EMAIL}</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={24} color="#777" />
         </TouchableOpacity>
@@ -79,9 +95,9 @@ const HelpSupportScreen = ({ navigation }) => {
           <View style={[styles.iconWrap, { backgroundColor: '#25D366' }]}>
             <MaterialCommunityIcons name="whatsapp" size={24} color="#fff" />
           </View>
-          <View style={{ flex: 1 }}>
+          <View style={styles.cardTextWrap}>
             <Text style={styles.cardTitle}>Chat on WhatsApp</Text>
-            <Text style={styles.cardSubtitle}>+91 9144612496</Text>
+            <Text style={styles.cardSubtitle}>+91-7620010017</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={24} color="#777" />
         </TouchableOpacity>
@@ -113,12 +129,12 @@ const HelpSupportScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#f5f9ff' },
+
   header: {
     height: 120,
     justifyContent: 'flex-end',
     paddingHorizontal: 18,
     paddingBottom: 30,
-    
   },
   headerRow: {
     flexDirection: 'row',
@@ -126,6 +142,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: { color: '#fff', fontSize: 25, fontWeight: '700' },
+
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 60,
+  },
 
   section: { marginBottom: 20 },
   sectionTitle: { fontSize: 17, fontWeight: '700', color: '#222' },
@@ -151,6 +172,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
+  cardTextWrap: { flex: 1 },
   cardTitle: { fontSize: 16, fontWeight: '600', color: '#222' },
   cardSubtitle: { fontSize: 13, color: '#666', marginTop: 2 },
 

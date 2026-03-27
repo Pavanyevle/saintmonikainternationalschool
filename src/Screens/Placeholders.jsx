@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors } from '../theme';
 
 const Placeholder = ({ title }) => (
   <View style={styles.wrap}>
@@ -18,8 +17,8 @@ export const PaymentHistory = (props) => <Placeholder title="Payment History" />
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
-  title: { fontSize: 22, color: colors.text, fontWeight: '700' },
-  subtitle: { marginTop: 6, fontSize: 14, color: colors.textMuted },
+  title: { fontSize: 22, color: '#213547', fontWeight: '700' },
+  subtitle: { marginTop: 6, fontSize: 14, color: '#718096' },
 });
 
 export default Placeholder;
